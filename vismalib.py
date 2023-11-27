@@ -15,12 +15,6 @@ import dotenv
 
 
 
-class empty:
-    def __init__(self, *args) -> None:
-        for arg in args:
-            print(arg)
-
-
 class Visma:
     Username: str
     Password: str
@@ -50,6 +44,7 @@ class Visma:
 
         print(f"Waited for {item}")
         return waited_for
+
 
     def scrape(self):
         Username = Visma.Username
@@ -106,11 +101,9 @@ class Visma:
             teachers = []
 
             for teacher in teacher_item:
-
                 items=teacher.find("div", {"teachername": True})
                 teacher_name = items['teachername']
                 teachers.append(teacher_name)
-            
             
             lessons = [h4tag.get_text().split()[0] for h4tag in h4_tags]
 
@@ -123,4 +116,6 @@ class Visma:
 
 
 if __name__ == "__main__":
-    empty()
+    visma = Visma()
+    visma.Username = "1234"
+    visma.Password = "13514"
