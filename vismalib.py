@@ -10,12 +10,20 @@ from functools import cache
 from bs4 import BeautifulSoup
 import time
 import os
-import dotenv
-
 
 
 
 class Visma:
+    """
+    A method to scrape Visma.
+    Usage: 
+    visma = Visma()
+    Visma.Username = username 
+    Visma.Password = password
+
+    dump = Visma.scrape()
+
+    """
     Username: str
     Password: str
 
@@ -27,15 +35,15 @@ class Visma:
         Put these as empty to see what is going on for testing purposes  
         """
 
-        self.chrome_driver_path = ChromeDriverManager().install()
-        self.service = Service(self.chrome_driver_path)
+        __chrome_driver_path = ChromeDriverManager().install()
+        self.service = Service(__chrome_driver_path)
         self.options = Options()
-        for arg in args:
-            self.options.add_argument(arg)  # Runs Chrome in headless mode.
+        self.driver = webdriver.Chrome(service=self.service, options=self.options)
+        self.driver.get("https://romsdal-vgs.inschool.visma.no/")
 
 
 
-    def waitUntil(self, byType: By, item: str): #Make the program wait for an element to appear to stop crashing
+    def __waitUntil(self, byType: By, item: str): #Make the program wait for an element to appear to stop crashing
 
         wait = WebDriverWait(self.driver, timeout=10)
         wait.until(EC.visibility_of_element_located((byType, item)))
@@ -46,11 +54,10 @@ class Visma:
         return waited_for
 
 
-    def scrape(self):
+    def scrape(self) -> dict:
         Username = Visma.Username
         Password = Visma.Password
 
-        self.driver = webdriver.Chrome(service=self.service, options=self.options)
         print("started") #Debug
 
         # Visit the desired URL
@@ -59,10 +66,10 @@ class Visma:
         # Locate the login button by its name and click it
         time.sleep(.5)
 
-        button = Visma.waitUntil(By.ID, "onetrust-accept-btn-handler")
+        button = self.__waitUntil(By.ID, "onetrust-accept-btn-handler")
         if button: button.click()
 
-        login = Visma.waitUntil(By.ID, "login-with-feide-button")
+        login = self.__waitUntil(By.ID, "login-with-feide-button")
         login.click()
 
         print("logging in")
@@ -77,20 +84,17 @@ class Visma:
         self.driver.implicitly_wait(2.5)
         print("parsing html")
 
-        Visma.waitUntil(By.CLASS_NAME, "Timetable-TimetableDays_day")
+        Visma.__waitUntil(By.CLASS_NAME, "Timetable-TimetableDays_day")
 
         page_source = self.driver.page_source
         soup = BeautifulSoup(page_source, 'html.parser')
 
         # Replace with the actual class of the parent div
 
-        parent_div = soup.find(
-            'div', class_='active Timetable-TimetableDays_day', recursive=True)
+        parent_div = soup.find('div', class_='active Timetable-TimetableDays_day', recursive=True)
 
         if not parent_div:
-
-            parent_div = soup.find(
-                'div', class_='Timetable-TimetableDays_day', recursive=True)
+            parent_div = soup.find('div', class_='Timetable-TimetableDays_day', recursive=True)
 
         if parent_div:
                     
@@ -109,13 +113,11 @@ class Visma:
 
             timestart = [h4tag.get_text().split('klokken')[1].split()[0] for h4tag in h4_tags]
             
-
-        dump = {i:[j,k] for i,j,k in zip(timestart, lessons, teachers)}
         self.driver.close()
-        return dump
+
+        return {i:[j,k] for i,j,k in zip(timestart, lessons, teachers)} # i:[j,k] gjør tid til en key i dictionariet
 
 
 if __name__ == "__main__":
     visma = Visma()
-    visma.Username = "1234"
-    visma.Password = "13514"
+
