@@ -76,43 +76,8 @@ class Visma:
         password.send_keys(self.Password)
 
         self.driver.find_element(By.CLASS_NAME, "button-primary").click()
-        self.driver.implicitly_wait(2.5)
         print("parsing html")
-
-        self.waitUntil(By.CLASS_NAME, "Timetable-TimetableDays_day")
-
-        page_source = self.driver.page_source
-        soup = BeautifulSoup(page_source, 'html.parser')
-
-        # Replace with the actual class of the parent div
-
-        parent_div = soup.find(
-            'div', class_='active Timetable-TimetableDays_day', recursive=True)
-
-        if not parent_div:
-
-            parent_div = soup.find(
-                'div', class_='Timetable-TimetableDays_day', recursive=True)
-
-        if parent_div:
-
-            # Find all <h4> elements within the parent <div>
-            h4_tags = parent_div.find_all('h4')
-
-            teacher_item = parent_div.find(
-                'div', class_="Timetable-Items", recursive=True)
-
-            teachers = [teacher.find("div", {"teachername": True})[
-                'teachername'] for teacher in teacher_item]
-
-            lessons = [h4tag.get_text().split()[0] for h4tag in h4_tags]
-
-            timestart = [h4tag.get_text().split('klokken')[1].split()[0]
-                         for h4tag in h4_tags]
-
-        dump = {i: [j, k] for i, j, k in zip(timestart, lessons, teachers)}
-        self.driver.close()
-        return dump
+        return self.driver.get_cookies()
 
 
 if __name__ == "__main__":
