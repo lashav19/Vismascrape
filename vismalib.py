@@ -11,6 +11,7 @@ from bs4 import BeautifulSoup
 import time
 import os
 import dotenv
+import requests
 
 
 class Visma:
@@ -77,13 +78,20 @@ class Visma:
 
         self.driver.find_element(By.CLASS_NAME, "button-primary").click()
         print("parsing html")
-        return self.driver.get_cookies()
+        return self.driver.get_cookie("Authorization").get("value"), self.driver.get_cookie("XSRF-TOKEN").get("value")
 
 
 if __name__ == "__main__":
 
-    scraper = Visma("--headless", "start-maximized")
+    scraper = Visma("--headless", "start-maximized", debug=True)
     scraper.Username = os.getenv("VismaUser")
     scraper.Password = os.getenv("VismaPassword")
     dump = scraper.scrape()
-    print(dump)
+    url = "https://romsdal-vgs.inschool.visma.no/control/timetablev2/learner/9390648/fetch/ALL/0/current?forWeek=11/04/2024&extra-info=true&types=LESSON,EVENT,ACTIVITY,SUBSTITUTION&_=1712867305697"
+    headers = {
+        "Cookie": f"Authorization={dump[0]};XSRF-TOKEN={dump[1]}"
+    }
+    r = requests.get(url, headers=headers)
+    res = r.json
+    for i in res.get("timetableItems"):
+        print(i)
