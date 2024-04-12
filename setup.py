@@ -7,7 +7,7 @@ with open('requirements.txt') as f:
 setup(
     name='vismalib',
     version='1.0',
-    description='A description of my package',
+    description='A library to get the visma API',
     packages=find_packages(),
     install_requires=requirements,
 )
