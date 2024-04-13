@@ -53,9 +53,8 @@ class vismalib:
         self.service = Service(self.chrome_driver_path)
         self.options = Options()
         self.wait = None
-        self.auth = "1234"
+        self.auth = None
         self.learnerid = None
-
         if not debug:
             args = ["--headless", "start-maximized"]
             for arg in args:
@@ -113,33 +112,52 @@ class vismalib:
         self.learnerid = self.wait.until(self.__getLearnerID)
         return self.auth, self.learnerid
 
-    def getNextLesson(self, tries=0):
+    def _filter(self, res, *, filter_type: str = "none"):
+        self.items = []
+        current_time = datetime(2024, 4, 10, 12, 0)
+        for day in res.get("timetableItems"):
+            time_obj = datetime.strptime(day.get("startTime"), "%H:%M")
+
+            # Combine date and time and convert to Unix timestamp
+            date_str = day.get("date")
+            day_str, month_str, year_str = date_str.split('/')
+
+            item_date = datetime(int(year_str), int(
+                month_str), int(day_str)).date()
+
+            match filter_type.lower():
+                case "next":
+                    if time_obj.time() > current_time.time() and item_date == current_time.date():
+                        return {"startTime": day.get("startTime"),
+                                "subject": day.get("subject"), "teacher": day.get("teacherName"),
+                                "endTime": day.get("endTime")}
+                case "today":
+                    if item_date == current_time.date():
+                        self.items.append({
+                            "startTime": day.get("startTime"),
+                            "subject": day.get("subject"),
+                            "teacher": day.get("teacherName"),
+                            "endTime": day.get("endTime")
+                        })
+
+                case "none":
+                    self.items.append({
+                        "startTime": day.get("startTime"),
+                        "subject": day.get("subject"),
+                        "teacher": day.get("teacherName"),
+                        "endTime": day.get("endTime")
+                    })
+        return self.items
+
+    def fetchJsonData(self, *, tries=0):
         if not self.learnerid or not self.auth:
+            self.logger("Getting auth")
             self.get_auth()
 
-        self.url = f"https://romsdal-vgs.inschool.visma.no/control/timetablev2/learner/{self.learnerid}/fetch/ALL/0/current?forWeek=11/04/2024&extra-info=true&types=LESSON,SUBSTITUTION"
         try:
+            self.url = f'https://romsdal-vgs.inschool.visma.no/control/timetablev2/learner/{self.learnerid}/fetch/ALL/0/current?forWeek={datetime.now().date().strftime("%d/%m/20%y")}&extra-info=true&types=LESSON,SUBSTITUTION'
             self.req = requests.get(self.url, headers=self.auth)
-            self.res = self.req.json()
-            print(self.req.status_code)
-            for day in self.res.get("timetableItems"):
-
-                # Set current_time to Wednesday, April 10th at 12:00
-                current_time = datetime(2024, 4, 10, 12, 0)
-                startTime = day.get("startTime")
-                time_obj = datetime.strptime(startTime, "%H:%M")
-
-                # Combine date and time and convert to Unix timestamp
-                date_str = day.get("date")
-                day_str, month_str, year_str = date_str.split('/')
-
-                item_date = datetime(int(year_str), int(
-                    month_str), int(day_str)).date()
-                if time_obj.time() > current_time.time() and item_date == current_time.date():
-
-                    return [startTime, day.get("subject"), day.get("teacherName")]
-                else:
-                    continue
+            return self.req.json()
 
         except requests.exceptions.JSONDecodeError:
             tries = 1
@@ -148,7 +166,16 @@ class vismalib:
             self.logger.error("Invalid credentials trying again", tries)
             self.learnerid = None
             self.auth = None
-            self.getNextLesson(tries)
+            self.fetchJsonData(tries=tries)
+
+    def getNextLesson(self):
+        return self._filter(self.fetchJsonData(), filter_type="next")
+
+    def getToday(self):
+        return self._filter(self.fetchJsonData(), filter_type="today")
+
+    def getWeek(self):
+        return self._filter(self.fetchJsonData())
 
 
 if __name__ == "__main__":  # test code
@@ -160,6 +187,4 @@ if __name__ == "__main__":  # test code
     #! Please for the love of god DO NOT PUT YOUR PASSWORDS IN PLAINTEXT USE ENVIRONMENT VARIABLES
     scraper.Username = os.getenv("VismaUser")
     scraper.Password = os.getenv("VismaPassword")
-    # dump = scraper.get_auth()
-    url = "https://romsdal-vgs.inschool.visma.no/control/timetablev2/learner/9390648/fetch/ALL/0/current?forWeek=11/04/2024&extra-info=true&types=LESSON,SUBSTITUTION"
     print("Neste time: ", scraper.getNextLesson())
