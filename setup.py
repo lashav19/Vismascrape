@@ -5,9 +5,9 @@ with open('requirements.txt') as f:
     requirements = f.read().splitlines()
 
 setup(
-    name='vismalib',
+    name='python-visma',
     version='1.0',
-    description='A library to get the visma API',
+    description='Python API to interact with visma as well as getting credentials to use against the Visma REST API',
     packages=find_packages(),
     install_requires=requirements,
 )
