@@ -7,9 +7,11 @@ from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.common.by import By
 from selenium import webdriver
 from datetime import datetime
+from datetime import time
 from colorama import Fore
-import os, requests, time
-
+import os
+import requests
+import time
 
 
 class logging:
@@ -20,20 +22,22 @@ class logging:
         self.now = datetime.now().strftime(self.format)
         for arg in args:
             print(f'Vismalib - - [{self.now}]: "{arg}"', end='\r')
+
     def error(self, *args) -> None:
         self.now = datetime.now().strftime(self.format)
         for arg in args:
-            print(f'Vismalib - - [{self.now}]: "{Fore.RED + arg}"' + Fore.RESET)
-    
+            print(
+                f'Vismalib - - [{self.now}]: "{Fore.RED + arg}"' + Fore.RESET)
+
+
 class vismalib:
     """
     ? A python API to use against Visma In School (VIS) and get lessions and other info
     ? Username: feide username ex: 3 letters of firstname 3 letters of lastname and the date your birthday is (ex: lashav19)
     ? Password: your password that you use on VIS
-     
+
      ! Please for the love of god DO NOT PUT YOUR PASSWORDS IN PLAINTEXT USE ENVIRONMENT VARIABLES
     """
-
 
     Username = ""
     Password = ""
@@ -49,25 +53,24 @@ class vismalib:
         self.service = Service(self.chrome_driver_path)
         self.options = Options()
         self.wait = None
-        self.auth = None
+        self.auth = "1234"
         self.learnerid = None
-        
+
         if not debug:
             args = ["--headless", "start-maximized"]
             for arg in args:
                 self.options.add_argument(arg)
 
-    
-
-    def waitElement(self, byType: By, item: str): # Waits for an HTML element to avoid crashing
-        self.wait = WebDriverWait(self.driver, timeout=5)
+    # Waits for an HTML element to avoid crashing
+    def waitElement(self, byType: By, item: str):
+        self.wait = WebDriverWait(self.driver, timeout=10)
         self.wait.until(EC.visibility_of_element_located((byType, item)))
         waited_for = self.driver.find_element(byType, item)
 
         self.logger.log(f"Waited for {item}")
         return waited_for
 
-    def __getLearnerID(self, driver): #"Private" method
+    def __getLearnerID(self, driver):  # "Private" method
         try:
             return driver.execute_script("return currentLearnerId")
         except:
@@ -88,16 +91,12 @@ class vismalib:
         self.driver.get("https://romsdal-vgs.inschool.visma.no/")
         self.logger.log("Getting URL")
 
-        
-
         button = self.waitElement(By.ID, "onetrust-accept-btn-handler")
         if button:
             button.click()
 
-
         login = self.waitElement(By.ID, "login-with-feide-button")
         login.click()
-
 
         username = self.waitElement(By.ID, "username")
         username.send_keys(self.Username)
@@ -107,38 +106,41 @@ class vismalib:
 
         self.logger.log("Logging in")
 
-
         self.driver.find_element(By.CLASS_NAME, "button-primary").click()
         self.auth = {
-            "Cookie": f"Authorization={self.driver.get_cookie("Authorization").get("value")};XSRF-TOKEN={self.driver.get_cookie("XSRF-TOKEN").get("value")}"
+            "Cookie": f'Authorization={self.driver.get_cookie("Authorization").get("value")};XSRF-TOKEN={self.driver.get_cookie("XSRF-TOKEN").get("value")}'
         }
-        self.learnerID = self.wait.until(self.__getLearnerID)
-
-        return self.auth, self.learnerID
-    
-    def filter(self, lessons, filter):
-        raise NotImplemented
-        self.filtered = []
-        if filter == "next":
-            for lesson in lessons.get("timetableItems"):
-                if lesson.get("date") == datetime.now().strftime("%d/%m/20%y"):
-                    self.filtered.append(lesson)
-
-        if filter == "today":
-            raise NotImplemented
-        if filter == "week":
-            raise NotImplemented
-
+        self.learnerid = self.wait.until(self.__getLearnerID)
+        return self.auth, self.learnerid
 
     def getNextLesson(self, tries=0):
-        raise NotImplemented
-        if not self.learnerid or self.auth:
-            self.scrape()
+        if not self.learnerid or not self.auth:
+            self.get_auth()
 
         self.url = f"https://romsdal-vgs.inschool.visma.no/control/timetablev2/learner/{self.learnerid}/fetch/ALL/0/current?forWeek=11/04/2024&extra-info=true&types=LESSON,SUBSTITUTION"
         try:
             self.req = requests.get(self.url, headers=self.auth)
-            self.res = req.json()
+            self.res = self.req.json()
+            print(self.req.status_code)
+            for day in self.res.get("timetableItems"):
+
+                # Set current_time to Wednesday, April 10th at 12:00
+                current_time = datetime(2024, 4, 10, 12, 0)
+                startTime = day.get("startTime")
+                time_obj = datetime.strptime(startTime, "%H:%M")
+
+                # Combine date and time and convert to Unix timestamp
+                date_str = day.get("date")
+                day_str, month_str, year_str = date_str.split('/')
+
+                item_date = datetime(int(year_str), int(
+                    month_str), int(day_str)).date()
+                if time_obj.time() > current_time.time() and item_date == current_time.date():
+
+                    return [startTime, day.get("subject"), day.get("teacherName")]
+                else:
+                    continue
+
         except requests.exceptions.JSONDecodeError:
             tries = 1
             if tries == 4:
@@ -148,34 +150,16 @@ class vismalib:
             self.auth = None
             self.getNextLesson(tries)
 
-if __name__ == "__main__": #test code
+
+if __name__ == "__main__":  # test code
 
     logger = logging()
 
     scraper = vismalib()
 
     #! Please for the love of god DO NOT PUT YOUR PASSWORDS IN PLAINTEXT USE ENVIRONMENT VARIABLES
-    scraper.Username = os.getenv("VismaUser") 
+    scraper.Username = os.getenv("VismaUser")
     scraper.Password = os.getenv("VismaPassword")
-    #dump = scraper.get_auth()
+    # dump = scraper.get_auth()
     url = "https://romsdal-vgs.inschool.visma.no/control/timetablev2/learner/9390648/fetch/ALL/0/current?forWeek=11/04/2024&extra-info=true&types=LESSON,SUBSTITUTION"
-    headers = {
-        #"Cookie": f"Authorization={dump[0]};XSRF-TOKEN={dump[1]}"
-        'Cookie': 'Authorization=eayJ0eXAiOiJKV1QiLCJ0b2tlblR5cGUiOiJBQ0NFU1MiLCJhbGciOiJSUzI1NiJ9.eyJzZXJpYWxpemVkVXNlckRldGFpbHMiOiJINHNJQUFBQUFBQUEvNzFRVVVyRFFCQzlTdG52dGV6T0pwdmRmRm1rYUtGRWlmZ2hVbVJwTm0wdzJaUnNyUlR4T0o3RWl6blRhUEVFRWhieTNzeDdNMi9lMmM3dHR5eG5qTFBYUmNWeWFSS1ZhV001MndkRXFaRDRXL3NDVzFvWHQrNGc3V1UzMU1mMnhVOURqNnFLU2tzWG81L2N1RVB3RVRuUDh2M3c2dEdETEsyeVFpZUdzL1hzZUJxaHRBSE5tUnNoalhiM3MrT3ZwcXAzU0Y2MVpFbG1iWTh3OUJmRkxZS3dSRDFuRzA5azBROXY3b2hzSkp1aDcyTGwyb3ZEaGxSZGlWUjV1NXcvTCtlenNwaVh0RlkzcG9qK2NudGFkZHFFbWpLNHh6VldRSURDbDV5SUgwem1GTEFjelNlSHB2S0QzM3g5K2xENVNYenBXMDh0WGJ6K3U4LzZqdVcxYXlPbTJaelBnM3hONEh5bHJxQVFOczJzVWlKRFluYy9uSFdod2ZNemlaY1Qya0ltQmRVZGhnY3RRVXJBb1EvbjVxYWlrOVVlbDZPMlJSVlovcFJDQXNad2s0akVXdUNDcDZoQ3FiSmdRV3B1cENBV2JKcUM0RGJUSEFuRGxWVUFpb09RS3NtRUdXVUN1MDhlT3VFb0ZmL3pyVENMSDdvbXhxWVBjVXkxK3ZnR2VjSnhKN01DQUFBPSIsImlkIjoiZWQ2OWE4N2UtMzJiNi00NWRkLTg4OTEtZDdmYTgwZTk2MjQ5IiwiaXNNb2JpbGUiOmZhbHNlLCJleHAiOjE3MTI5MDMyNjYsInBhcnRSZWYiOiJkN2NjMzQxNzIxN2RlOTQzZmQ3ODZlMzFmZWMzYjgxNCIsImlzU3VwcG9ydFVzZXIiOmZhbHNlLCJpYXQiOjE3MTI5MDI5NjYsInRlbmFudCI6MTUwMTksInNhbWxDcmVkZW50aWFsc1JlZklkIjoiZGU3NDI1YTctMmE4OC00NjdlLThiNDktNmE1MzJlYmE0ZGUyOjIwMjQtMDQtMTJUMDY6MjI6NDYuNzgzOTkxOTE4IiwidG9rZW5HZW5lcmF0aW9uVmVyc2lvbklkIjoiZjg5ZTgwMzRmMjdlOTI2NDFhZmIxN2RkZTEwN2RhZDQ1Y2FjOTZjNGFlZjc1ZjZhNjdiNzUyNDVmNDgwYWNjZSJ9.kj3zRTWa9Bsn8QsWg2fUO_QTnbaIx72PV9QfQrCc1w-GsV4c1ldPjz-6dBIxk6eealydc6Sojh_s7oXe_aTOxkGyY-Kj7PZtbG4EXPVTao1zLy2D-Eo9ePufRIWVxp5Gwv8zJRTXpZkbQ87tdqOM_j5qnJxKfKBO3KJgp7u2dlfU5p1iCwPYII3RRMZwobI9d-cM7cCIDVe4IPAkU5SbmkQVeH_9ziYLxwqUlSEBjXK1K_pRv4fd6imUVf6BSAqsd6fYnl6l1ap3XiblqMAKhl2cDdA388nJT5qmySmYorsur6y4KsAc4l1ALxNcLU9Jg8OGe-0FYIXF1-IizY-b-Q;XSRF-TOKEN=25d3b46a-4cea-4e58-85c0-5d698b340886'
-    }
-
-    r = requests.get(url, headers=headers)
-    try:
-        print(r.json())
-    except requests.exceptions.JSONDecodeError:
-        logger.error("Error processing request")
-        dump = scraper.get_auth()
-
-        r = requests.get(url, headers=dump[0])
-        res = r.json()
-        current_date = datetime.now().strftime("%d/%m/%Y")
-        current_time = datetime.combine(datetime.today(), time(hour=12, minute=0))
-        for day in res.get("timetableItems"):
-            if day.get("date") == current_date and datetime.strptime(day.get("startTime"), "%H:%M") > datetime.strptime(current_time, "%H:%M"):
-                logger.log(day.get("subject"), day.get("teacherName"), day.get("startTime"))
-                quit()
+    print("Neste time: ", scraper.getNextLesson())
