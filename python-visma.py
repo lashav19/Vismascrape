@@ -31,7 +31,7 @@ class logging:
                 f'Vismalib - - [{self.now}]: {Fore.RED + arg + Fore.RESET}')
 
 
-class vismalib:
+class visma:
     """
     ? A python API to use against Visma In School (VIS) and get lessions and other info
     ? Username: feide username ex: 3 letters of firstname 3 letters of lastname and the date your birthday is (ex: lashav19)
@@ -184,7 +184,7 @@ class vismalib:
         data = self.__filter(self.fetchJsonData(), filter_type="next")
         return data if data else {
             "startTime": None,
-            "subject": "Fri",
+            "subject": None,
             "teacher": None,
             "endTime": None
         }
@@ -193,7 +193,7 @@ class vismalib:
         data = self.__filter(self.fetchJsonData(), filter_type="today")
         return data if data else {
             "startTime": None,
-            "subject": "Fri",
+            "subject": None,
             "teacher": None,
             "endTime": None
         }
@@ -204,7 +204,7 @@ class vismalib:
 
 if __name__ == "__main__":  # test code
 
-    visma = vismalib()
+    visma = visma()
     visma.Username = os.getenv("VismaUser")
     visma.Password = os.getenv("VismaPassword")
     print("Neste time: ", visma.getNextLesson())
