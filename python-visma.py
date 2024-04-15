@@ -4,7 +4,6 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.keys import Keys
-from argparse import ArgumentParser, Namespace
 from selenium.webdriver.common.by import By
 from selenium import webdriver
 from datetime import datetime
