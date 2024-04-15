@@ -162,6 +162,12 @@ class visma:
         return self.auth, self.learnerid
 
     def fetchJsonData(self, *, tries: int = 0) -> dict:
+        """
+        Fetches json data from the visma API
+        if auth is expired it will automatically get credentials
+
+        ?param tries: prevent infinite recursion no use in inputting everything other than 0
+        """
         if not self.learnerid or not self.auth:
             self.logger.error("Missing auth, getting auth")
             self.get_auth()
@@ -172,8 +178,9 @@ class visma:
             return self.req.json()
 
         except requests.exceptions.JSONDecodeError:
+            # If you already have auth and it is expired it will attempt to get a new one
             tries = 1
-            if tries == 4:
+            if tries == 4:  # max 4 tries
                 raise ConnectionAbortedError("Error getting credentials")
             self.logger.error("Invalid credentials trying again", tries)
             self.learnerid = None
