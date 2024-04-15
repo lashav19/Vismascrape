@@ -40,20 +40,17 @@ class vismalib:
      ! Please for the love of god DO NOT PUT YOUR PASSWORDS IN PLAINTEXT USE ENVIRONMENT VARIABLES
     """
 
-    Username = ""
-    Password = ""
-
     def __init__(self, *, debug=False, hide=True) -> None:
         """
         ? param debug:  View logs for everything that is happening
         ? param hide: hides the browser window
 
         """
-        self.Username = vismalib.Username
-        self.Password = vismalib.Password
+        self.Username = ""
+        self.Password = ""
 
-        self.chrome_driver_path = ChromeDriverManager().install()
-        self.service = Service(self.chrome_driver_path)
+        self._chrome_driver_path = ChromeDriverManager().install()
+        self.service = Service(self._chrome_driver_path)
         self.options = Options()
 
         self.wait = None
@@ -87,7 +84,7 @@ class vismalib:
         except:
             return False
 
-    def __filter(self, res, *, filter_type: str = "none") -> dict:
+    def __filter(self, res, *, filter_type: str) -> dict:
         self.items = []
         current_time = datetime.now() if not self.debug else datetime(2024, 4, 10, 12, 0)
         for day in res.get("timetableItems"):
@@ -106,6 +103,7 @@ class vismalib:
                         return {"startTime": day.get("startTime"),
                                 "subject": day.get("subject"), "teacher": day.get("teacherName"),
                                 "endTime": day.get("endTime")}
+
                 case "today":
                     if item_date == current_time.date():
                         self.items.append({
@@ -115,7 +113,7 @@ class vismalib:
                             "endTime": day.get("endTime")
                         })
 
-                case "none":
+                case _:
                     self.items.append({
                         "startTime": day.get("startTime"),
                         "subject": day.get("subject"),
@@ -207,8 +205,6 @@ class vismalib:
 if __name__ == "__main__":  # test code
 
     visma = vismalib()
-
-    #! Please for the love of god DO NOT PUT YOUR PASSWORDS IN PLAINTEXT USE ENVIRONMENT VARIABLES
     visma.Username = os.getenv("VismaUser")
     visma.Password = os.getenv("VismaPassword")
-    print("Neste time: ", visma.getWeek())
+    print("Neste time: ", visma.getNextLesson())
