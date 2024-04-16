@@ -3,7 +3,7 @@
 ## Config
 
 ```py
-from python-visma import visma
+from python_visma import visma
 
 api = visma()
 api.Username = "Your username"
