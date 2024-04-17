@@ -1,4 +1,5 @@
 from selenium.webdriver.support import expected_conditions as EC
+from selenium.webdriver.remote.webelement import WebElement
 from webdriver_manager.chrome import ChromeDriverManager
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.chrome.service import Service
@@ -9,6 +10,7 @@ from selenium import webdriver
 from datetime import datetime
 from colorama import Fore
 import requests
+import selenium
 import time
 import os
 
@@ -69,27 +71,30 @@ class visma:
     # Private
 
     # Waits for an HTML element to avoid crashing
-    def __waitelement(self, byType: By, item: str):
+    def __waitelement(self, byType: By, item: str) -> WebElement:
         self.wait = WebDriverWait(self.driver, timeout=10)
         self.wait.until(EC.visibility_of_element_located((byType, item)))
-        waited_for = self.driver.find_element(byType, item)
 
+        waited_for = self.driver.find_element(byType, item)
         self.logger.log(f"Waited for {item}")
+
         return waited_for
 
     def __getLearnerID(self, driver):  # "Private" method
         try:
+            # Gets the current learnerID
             return driver.execute_script("return currentLearnerId")
         except:
             return False
 
-    def __filter(self, res, *, filter_type: str) -> dict:
+    def __filter(self, res, *, filter_type: str = "next") -> dict:
         self.items = []
         current_time = datetime.now() if not self.debug else datetime(2024, 4, 10, 12, 0)
-        for day in res.get("timetableItems"):
-            time_obj = datetime.strptime(day.get("startTime"), "%H:%M")
 
-            # Combine date and time and convert to Unix timestamp
+        for day in res.get("timetableItems"):
+            lesson_time = datetime.strptime(day.get("startTime"), "%H:%M")
+
+            # Combine date and time and convert datetime
             date_str = day.get("date")
             day_str, month_str, year_str = date_str.split('/')
 
@@ -98,10 +103,10 @@ class visma:
 
             match filter_type.lower():
                 case "next":
-                    if time_obj.time() > current_time.time() and item_date == current_time.date():
-                        return {"startTime": day.get("startTime"),
-                                "subject": day.get("subject"), "teacher": day.get("teacherName"),
-                                "endTime": day.get("endTime")}
+                    return {"startTime": day.get("startTime"),
+                            "subject": day.get("subject"),
+                            "teacher": day.get("teacherName"),
+                            "endTime": day.get("endTime")} if lesson_time.time() > current_time.time() and item_date == current_time.date() else self.items
 
                 case "today":
                     if item_date == current_time.date():
