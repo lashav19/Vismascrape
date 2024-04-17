@@ -89,13 +89,16 @@ class visma:
 
     def __filter(self, res, *, filter_type: str = "None") -> dict:
         self.items = []
-        current_time = datetime.now() if not self.debug else datetime(2024, 4, 10, 12, 0)
 
         for day in res.get("timetableItems"):
             lesson_time = datetime.strptime(day.get("startTime"), "%H:%M")
 
             # Combine date and time and convert datetime
             date_str = day.get("date")
+            debug_date = date_str.split('/')
+            current_time = datetime.now() if not self.debug else datetime(
+                2024, int(debug_date[1]), int(debug_date[0]), 12, 0)
+
             day_str, month_str, year_str = date_str.split('/')
 
             item_date = datetime(int(year_str), int(
@@ -215,7 +218,7 @@ class visma:
 
 if __name__ == "__main__":  # test code
 
-    visma = visma()
+    visma = visma(debug=True)
     visma.Username = os.getenv("VismaUser")
     visma.Password = os.getenv("VismaPassword")
-    print("Neste time: ", visma.getNextLesson())
+    print("Neste time: ", visma.getWeek())
