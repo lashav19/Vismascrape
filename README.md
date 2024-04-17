@@ -1,5 +1,21 @@
 # python-visma
 
+## Installation
+
+### Install from repo
+```
+pip install https://github.com/lashav19/python-visma.git
+```
+
+### Manually install
+```
+git clone https://github.com/lashav19/python-visma.git
+cd python-visma
+python setup.py install
+```
+
+Now it is installed in your python packages
+
 ## Config
 
 ```py
@@ -76,4 +92,25 @@ data = request.get(url, headers=Cookie)
 data = request.get(url, headers=api.get_auth())
 ```
 
+## Logging
+
+Incase you want to log with the format of this, this is the function
+
+```py
+class logging:
+    def __init__(self, debug=False, *, time_format="%d/%m/20%y %H:%M:%S"):
+        self.debug = debug
+        self.format = time_format
+
+    def log(self, *args) -> None:
+        self.now = datetime.now().strftime(self.format)
+        for arg in args:
+            print(f'Vismalib - - [{self.now}]: {arg}') if self.debug else None
+
+    def error(self, *args) -> None:
+        self.now = datetime.now().strftime(self.format)
+        for arg in args:
+            print(
+                f'Vismalib - - [{self.now}]: {Fore.RED + arg + Fore.RESET}')
+```
 If you have any questions feel free to send me a message on discord `@b4z1c`
