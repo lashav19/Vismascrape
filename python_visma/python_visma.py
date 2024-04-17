@@ -70,9 +70,11 @@ class visma:
                 self.options.add_argument(arg)
 
         self.__readAuth()
-    # Private
 
-    def __readAuth(self):
+# Private functions
+
+    def __readAuth(self) -> None | bool:
+        # * reads the credentials from creds.json
         try:
             with open("creds.json", "r") as file:
                 content = file.read()
@@ -82,15 +84,16 @@ class visma:
             return False
 
     def __writeAuth(self):
+        # * writes the credentials to creds.json
         with open("creds.json", "w") as outfile:
             data = {
                 "auth": self.auth,
                 "learnerID": self.learnerid
             }
             json.dump(data, outfile)
-    # Waits for an HTML element to avoid crashing
 
     def __waitelement(self, byType: By, item: str) -> WebElement:
+        # * Waits for an HTML element to avoid crashing
         self.wait = WebDriverWait(self.driver, timeout=10)
         self.wait.until(EC.visibility_of_element_located((byType, item)))
 
@@ -101,18 +104,19 @@ class visma:
 
     def __getLearnerID(self, driver):  # "Private" method
         try:
-            # Gets the current learnerID
+            # * Gets the current learnerID
             return driver.execute_script("return currentLearnerId")
         except:
             return False
 
-    def __filter(self, res, *, filter_type: str = "None") -> dict:
-        self.items = []
+    def __filter(self, res, *, filter_type: str = "None") -> dict | list[dict]:
+        items = []
+        self.logger.log(self.items)
 
         for day in res.get("timetableItems"):
             lesson_time = datetime.strptime(day.get("startTime"), "%H:%M")
 
-            # Combine date and time and convert datetime
+            # * Combine date and time and convert datetime
             date_str = day.get("date")
             debug_date = date_str.split('/')
             current_time = datetime.now() if not self.debug else datetime(
@@ -132,7 +136,7 @@ class visma:
 
                 case "today":
                     if item_date == current_time.date():
-                        self.items.append({
+                        items.append({
                             "startTime": day.get("startTime"),
                             "subject": day.get("subject"),
                             "teacher": day.get("teacherName"),
@@ -140,16 +144,16 @@ class visma:
                         })
 
                 case _:
-                    self.items.append({
+                    items.append({
                         "startTime": day.get("startTime"),
                         "subject": day.get("subject"),
                         "teacher": day.get("teacherName"),
                         "endTime": day.get("endTime")
                     })
-        return self.items
+        return items
 
     def __retry(self, tries=0):
-        # If credentials are invalid it will attempt again
+        # * If credentials are invalid it will attempt again
         tries += 1
         if tries == 4:  # max 4 tries
             raise ConnectionAbortedError("Error getting credentials")
@@ -162,7 +166,7 @@ class visma:
 
     def get_auth(self) -> str:
         """
-        A method for getting the cookies necessary for use of the in built API
+        #* A method for getting the cookies necessary for use of the in built API
         ? return[0]: is the header for request
         ? return[1]: is the value of learnerID to use towards the api
         """
@@ -171,7 +175,6 @@ class visma:
         self.driver = webdriver.Chrome(
             service=self.service, options=self.options)
 
-        # Open URL
         self.driver.get("https://romsdal-vgs.inschool.visma.no/")
         self.logger.log("Getting URL")
 
@@ -202,10 +205,10 @@ class visma:
 
     def fetchJsonData(self, *, tries: int = 0) -> dict:
         """
-        Fetches json data from the visma API
-        if auth is expired it will automatically get credentials
+        *Fetches json data from the visma API
+        *if auth is expired it will automatically get credentials
 
-        ?param tries: prevent infinite recursion no use in inputting everything other than 0
+        ?param tries: prevent infinite recursion no use in inputting anything other than 0
         """
         if not self.learnerid or not self.auth:
             self.logger.error("Missing auth, getting auth")
@@ -214,7 +217,7 @@ class visma:
         try:
             self.url = f'https://romsdal-vgs.inschool.visma.no/control/timetablev2/learner/{self.learnerid}/fetch/ALL/0/current?forWeek={datetime.now().date().strftime("%d/%m/20%y")}&extra-info=true&types=LESSON,SUBSTITUTION'
             self.req = requests.get(self.url, headers=self.auth)
-            print(self.req.status_code)
+            self.logger.log(self.req.status_code)
             if self.req.status_code > 400:
                 self.__retry(tries)
 
@@ -247,7 +250,7 @@ class visma:
 
 if __name__ == "__main__":  # test code
 
-    visma = visma(debug=True)
+    visma = visma()
     visma.Username = os.getenv("VismaUser")
     visma.Password = os.getenv("VismaPassword")
     print("Neste time: ", visma.getWeek())
