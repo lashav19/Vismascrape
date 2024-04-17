@@ -87,7 +87,7 @@ class visma:
         except:
             return False
 
-    def __filter(self, res, *, filter_type: str = "next") -> dict:
+    def __filter(self, res, *, filter_type: str = "None") -> dict:
         self.items = []
         current_time = datetime.now() if not self.debug else datetime(2024, 4, 10, 12, 0)
 
