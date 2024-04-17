@@ -11,6 +11,7 @@ from datetime import datetime
 from colorama import Fore
 import requests
 import selenium
+import json
 import time
 import os
 
@@ -68,9 +69,27 @@ class visma:
             for arg in args:
                 self.options.add_argument(arg)
 
+        self.__readAuth()
     # Private
 
+    def __readAuth(self):
+        try:
+            with open("creds.json", "r") as file:
+                content = file.read()
+                self.learnerid = json.loads(content).get("learnerID")
+                self.auth = json.loads(content).get("auth")
+        except:
+            return False
+
+    def __writeAuth(self):
+        with open("creds.json", "w") as outfile:
+            data = {
+                "auth": self.auth,
+                "learnerID": self.learnerid
+            }
+            json.dump(data, outfile)
     # Waits for an HTML element to avoid crashing
+
     def __waitelement(self, byType: By, item: str) -> WebElement:
         self.wait = WebDriverWait(self.driver, timeout=10)
         self.wait.until(EC.visibility_of_element_located((byType, item)))
@@ -129,6 +148,16 @@ class visma:
                     })
         return self.items
 
+    def __retry(self, tries=0):
+        # If credentials are invalid it will attempt again
+        tries += 1
+        if tries == 4:  # max 4 tries
+            raise ConnectionAbortedError("Error getting credentials")
+        self.logger.error(f"Invalid credentials trying again {tries}")
+        self.learnerid = None
+        self.auth = None
+        self.fetchJsonData(tries=tries)
+
     # Public
 
     def get_auth(self) -> str:
@@ -166,6 +195,9 @@ class visma:
             "Cookie": f'Authorization={self.driver.get_cookie("Authorization").get("value")};XSRF-TOKEN={self.driver.get_cookie("XSRF-TOKEN").get("value")}'
         }
         self.learnerid = self.wait.until(self.__getLearnerID)
+
+        self.__writeAuth()
+
         return self.auth, self.learnerid
 
     def fetchJsonData(self, *, tries: int = 0) -> dict:
@@ -182,17 +214,14 @@ class visma:
         try:
             self.url = f'https://romsdal-vgs.inschool.visma.no/control/timetablev2/learner/{self.learnerid}/fetch/ALL/0/current?forWeek={datetime.now().date().strftime("%d/%m/20%y")}&extra-info=true&types=LESSON,SUBSTITUTION'
             self.req = requests.get(self.url, headers=self.auth)
+            print(self.req.status_code)
+            if self.req.status_code > 400:
+                self.__retry(tries)
+
             return self.req.json()
 
         except requests.exceptions.JSONDecodeError:
-            # If you already have auth and it is expired it will attempt to get a new one
-            tries = 1
-            if tries == 4:  # max 4 tries
-                raise ConnectionAbortedError("Error getting credentials")
-            self.logger.error("Invalid credentials trying again", tries)
-            self.learnerid = None
-            self.auth = None
-            self.fetchJsonData(tries=tries)
+            self.__retry(tries)
 
     def getNextLesson(self) -> dict:
         data = self.__filter(self.fetchJsonData(), filter_type="next")
