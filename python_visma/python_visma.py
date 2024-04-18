@@ -110,7 +110,7 @@ class visma:
             return False
 
     def __filter(self, res, *, filter_type: str = "None") -> dict | list[dict]:
-        items = []
+        self.items = []
         self.logger.log(self.items)
 
         for day in res.get("timetableItems"):
@@ -136,7 +136,7 @@ class visma:
 
                 case "today":
                     if item_date == current_time.date():
-                        items.append({
+                        self.items.append({
                             "startTime": day.get("startTime"),
                             "subject": day.get("subject"),
                             "teacher": day.get("teacherName"),
@@ -144,13 +144,13 @@ class visma:
                         })
 
                 case _:
-                    items.append({
+                    self.items.append({
                         "startTime": day.get("startTime"),
                         "subject": day.get("subject"),
                         "teacher": day.get("teacherName"),
                         "endTime": day.get("endTime")
                     })
-        return items
+        return self.items
 
     def __retry(self, tries=0):
         # * If credentials are invalid it will attempt again
@@ -253,4 +253,4 @@ if __name__ == "__main__":  # test code
     visma = visma()
     visma.Username = os.getenv("VismaUser")
     visma.Password = os.getenv("VismaPassword")
-    print("Neste time: ", visma.getWeek())
+    print("Neste time: ", visma.fetchJsonData())
