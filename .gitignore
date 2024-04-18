@@ -1,7 +1,8 @@
-.venv
-.env
+*.venv
+*.env
 *test.py
 *test
 *dist
 *build
 *creds.json
+*python_visma.egg-info
