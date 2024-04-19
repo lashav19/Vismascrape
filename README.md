@@ -2,6 +2,7 @@
 
 ## Installation
 
+
 I might add it to PyPi but as long as this is in beta it won't be
 
 ### Install from repo
@@ -17,8 +18,6 @@ python setup.py install
 ```
 
 Now it is installed in your python packages
-
-
 
 ## Config
 
