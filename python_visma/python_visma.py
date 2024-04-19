@@ -1,3 +1,5 @@
+import selenium.common
+import selenium.webdriver
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.remote.webelement import WebElement
 from webdriver_manager.chrome import ChromeDriverManager
@@ -124,13 +126,9 @@ class visma:
             # * Combine date and time and convert datetime
             date_str = day.get("date")
             debug_date = date_str.split('/')
-            current_time = datetime.now() if not self.debug else datetime(
-                2024, int(debug_date[1]), int(debug_date[0]), 12, 0)
-
+            current_time = datetime.now() if not self.debug else datetime(2024, int(debug_date[1]), int(debug_date[0]), 12, 0)
             day_str, month_str, year_str = date_str.split('/')
-
-            item_date = datetime(int(year_str), int(
-                month_str), int(day_str)).date()
+            item_date = datetime(int(year_str), int(month_str), int(day_str)).date()
 
             match filter_type.lower():
                 case "next":
@@ -175,38 +173,36 @@ class visma:
         ? return[0]: is the header for request
         ? return[1]: is the value of learnerID to use towards the api
         """
-        self.logger.log("Started")
+        try:
+            self.logger.log("Started")
 
-        self.driver = webdriver.Chrome(
-            service=self.service, options=self.options)
+            self.driver = webdriver.Chrome(
+                service=self.service, options=self.options)
+            
+            self.driver.get(self.url)
+            self.logger.log("Getting URL")
 
-        self.driver.get(self.url)
-        self.logger.log("Getting URL")
+            username = self.__waitelement(By.ID, "username")
+            username.send_keys(self.Username)
 
-        """button = self.__waitelement(By.ID, "onetrust-accept-btn-handler")
-        if button:
-            button.click()"""
+            password = self.__waitelement(By.ID, "password")
+            password.send_keys(self.Password)
 
-        """login = self.__waitelement(By.ID, "login-with-feide-button")
-        login.click()"""
+            self.logger.log("Logging in")
 
-        username = self.__waitelement(By.ID, "username")
-        username.send_keys(self.Username)
+            self.driver.find_element(By.CLASS_NAME, "button-primary").click()
+            self.auth = {
+                "Cookie": f'Authorization={self.driver.get_cookie("Authorization").get("value")};XSRF-TOKEN={self.driver.get_cookie("XSRF-TOKEN").get("value")}'
+            }
+            self.learnerid = self.wait.until(self.__getLearnerID)
 
-        password = self.__waitelement(By.ID, "password")
-        password.send_keys(self.Password)
+            self.__writeAuth()
 
-        self.logger.log("Logging in")
-
-        self.driver.find_element(By.CLASS_NAME, "button-primary").click()
-        self.auth = {
-            "Cookie": f'Authorization={self.driver.get_cookie("Authorization").get("value")};XSRF-TOKEN={self.driver.get_cookie("XSRF-TOKEN").get("value")}'
-        }
-        self.learnerid = self.wait.until(self.__getLearnerID)
-
-        self.__writeAuth()
-
-        return self.auth, self.learnerid
+            return self.auth, self.learnerid
+        except  selenium.common.exceptions.InvalidArgumentException:
+            self.logger.error("Error, no URL specified")
+        except Exception as e:
+            self.logger.log(e)
 
     def fetchJsonData(self, *, tries: int = 0) -> dict:
         """
@@ -258,7 +254,5 @@ if __name__ == "__main__":  # test code
     visma = visma()
     visma.Username = os.getenv("VismaUser")
     visma.Password = os.getenv("VismaPassword")
-
     
-    execution_time = timeit.timeit("visma.get_auth()", number=1, globals=globals())
-    print(execution_time)
+    visma.get_auth()
