@@ -11,9 +11,12 @@ from datetime import datetime
 from colorama import Fore
 import requests
 import selenium
+import timeit
 import json
 import time
 import os
+
+# *!?TODO = Bettercomments VSCode extension
 
 
 class logging:
@@ -41,15 +44,17 @@ class visma:
 
      ! Please for the love of god DO NOT PUT YOUR PASSWORDS IN PLAINTEXT USE ENVIRONMENT VARIABLES
     """
-
+    
     def __init__(self, *, debug=False, hide=True) -> None:
         """
-        ? param debug:  View logs for everything that is happening
-        ? param hide: hides the browser window
+        ? @param debug:  View logs for everything that is happening
+        ? @param hide: hides the browser window
 
         """
+        #TODO: implement custom URL
         self.Username = ""
         self.Password = ""
+        self.url = "https://romsdal-vgs.inschool.visma.no/?idp=feide"
 
         self._chrome_driver_path = ChromeDriverManager().install()
         self.service = Service(self._chrome_driver_path)
@@ -175,15 +180,15 @@ class visma:
         self.driver = webdriver.Chrome(
             service=self.service, options=self.options)
 
-        self.driver.get("https://romsdal-vgs.inschool.visma.no/")
+        self.driver.get(self.url)
         self.logger.log("Getting URL")
 
-        button = self.__waitelement(By.ID, "onetrust-accept-btn-handler")
+        """button = self.__waitelement(By.ID, "onetrust-accept-btn-handler")
         if button:
-            button.click()
+            button.click()"""
 
-        login = self.__waitelement(By.ID, "login-with-feide-button")
-        login.click()
+        """login = self.__waitelement(By.ID, "login-with-feide-button")
+        login.click()"""
 
         username = self.__waitelement(By.ID, "username")
         username.send_keys(self.Username)
@@ -215,8 +220,8 @@ class visma:
             self.get_auth()
 
         try:
-            self.url = f'https://romsdal-vgs.inschool.visma.no/control/timetablev2/learner/{self.learnerid}/fetch/ALL/0/current?forWeek={datetime.now().date().strftime("%d/%m/20%y")}&extra-info=true&types=LESSON,SUBSTITUTION'
-            self.req = requests.get(self.url, headers=self.auth)
+            self.req_url = f'https://romsdal-vgs.inschool.visma.no/control/timetablev2/learner/{self.learnerid}/fetch/ALL/0/current?forWeek={datetime.now().date().strftime("%d/%m/20%y")}&extra-info=true&types=LESSON,SUBSTITUTION'
+            self.req = requests.get(self.req_url, headers=self.auth)
             self.logger.log(self.req.status_code)
             if self.req.status_code > 400:
                 self.__retry(tries)
@@ -253,4 +258,7 @@ if __name__ == "__main__":  # test code
     visma = visma()
     visma.Username = os.getenv("VismaUser")
     visma.Password = os.getenv("VismaPassword")
-    print("Neste time: ", visma.fetchJsonData())
+
+    
+    execution_time = timeit.timeit("visma.get_auth()", number=1, globals=globals())
+    print(execution_time)
