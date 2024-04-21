@@ -1,5 +1,3 @@
-import selenium.common
-import selenium.webdriver
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.remote.webelement import WebElement
 from webdriver_manager.chrome import ChromeDriverManager
@@ -21,7 +19,7 @@ import os
 # *!?TODO = Bettercomments VSCode extension
 
 
-class logging:
+class logging: #! Custom logging method to avoid selenium's debug logging
     def __init__(self, debug=False, *, time_format="%d/%m/20%y %H:%M:%S"):
         self.debug = debug
         self.format = time_format
@@ -47,7 +45,7 @@ class visma:
      ! Please for the love of god DO NOT PUT YOUR PASSWORDS IN PLAINTEXT USE ENVIRONMENT VARIABLES
     """
     
-    def __init__(self, *, debug=False, hide=True) -> None:
+    def __init__(self, url,*, debug=False, hide=True) -> None:
         """
         ? @param debug:  View logs for everything that is happening
         ? @param hide: hides the browser window
@@ -56,7 +54,9 @@ class visma:
         #TODO: implement custom URL
         self.Username = ""
         self.Password = ""
-        self.url = "https://romsdal-vgs.inschool.visma.no/?idp=feide"
+        self.base_url = url if url.endswith('/') else url+"/"
+        self.url = self.base_url + "?idp=feide" if url.endswith('/') else self.base_url + "/?idp=feide"
+
 
         self._chrome_driver_path = ChromeDriverManager().install()
         self.service = Service(self._chrome_driver_path)
@@ -78,7 +78,7 @@ class visma:
 
         self.__readAuth()
 
-# Private functions
+# "Private" functions
 
     def __readAuth(self) -> None | bool:
         # * reads the credentials from creds.json
@@ -200,7 +200,7 @@ class visma:
 
             return self.auth, self.learnerid
         except  selenium.common.exceptions.InvalidArgumentException:
-            self.logger.error("Error, no URL specified")
+            raise ValueError("No url specified")
         except Exception as e:
             self.logger.log(e)
 
@@ -216,9 +216,9 @@ class visma:
             self.get_auth()
 
         try:
-            self.req_url = f'https://romsdal-vgs.inschool.visma.no/control/timetablev2/learner/{self.learnerid}/fetch/ALL/0/current?forWeek={datetime.now().date().strftime("%d/%m/20%y")}&extra-info=true&types=LESSON,SUBSTITUTION'
+            self.req_url = f'{self.base_url}control/timetablev2/learner/{self.learnerid}/fetch/ALL/0/current?forWeek={datetime.now().date().strftime("%d/%m/20%y")}&extra-info=true&types=LESSON,SUBSTITUTION'
             self.req = requests.get(self.req_url, headers=self.auth)
-            self.logger.log(self.req.status_code)
+            self.logger.log(self.req_url)
             if self.req.status_code > 400:
                 self.__retry(tries)
 
@@ -251,8 +251,7 @@ class visma:
 
 if __name__ == "__main__":  # test code
 
-    visma = visma()
+    visma = visma("https://romsdal-vgs.inschool.visma.no")
     visma.Username = os.getenv("VismaUser")
     visma.Password = os.getenv("VismaPassword")
-    
-    visma.get_auth()
+    print(visma.getWeek())
