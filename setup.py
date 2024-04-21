@@ -1,7 +1,9 @@
 from setuptools import setup, find_packages
 from pathlib import Path
-this_directory = Path(__file__).parent
-long_description = (this_directory / "README.md").read_text()
+
+
+with open("README.md") as f:
+    long_description = f.read()
 
 # Read the contents of requirements.txt
 with open('requirements.txt') as f:
