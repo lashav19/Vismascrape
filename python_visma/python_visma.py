@@ -11,6 +11,7 @@ from datetime import datetime
 from colorama import Fore
 import requests
 import selenium
+import logging as lg
 import timeit
 import json
 import time
@@ -201,9 +202,7 @@ class visma:
             return self.auth, self.learnerid
         except  selenium.common.exceptions.InvalidArgumentException:
             raise ValueError("No url specified")
-        except Exception as e:
-            self.logger.log(e)
-
+        
     def fetchJsonData(self, *, tries: int = 0) -> dict:
         """
         *Fetches json data from the visma API
