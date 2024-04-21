@@ -2,6 +2,9 @@
 
 ## Installation
 
+
+I might add it to PyPi but as long as this is in beta it won't be
+
 ### Install from repo
 ```
 pip install https://github.com/lashav19/python-visma.git
@@ -25,6 +28,7 @@ api = visma()
 api.Username = "Your username"
 api.Password = "Your password"
 ```
+
 
 Please use environment variables and / or encrypt your password before putting it in the file to avoid plaintext.
 
@@ -114,3 +118,5 @@ class logging:
                 f'Vismalib - - [{self.now}]: {Fore.RED + arg + Fore.RESET}')
 ```
 If you have any questions feel free to send me a message on discord `@b4z1c`
+
+mail: [lasse@havnes.info](lasse@havnes.info)
