@@ -1,10 +1,10 @@
 
 import os
-from requests_html import HTMLSession
-from webdriver_manager.chrome import ChromeDriverManager
 import urllib
 from urllib.parse import urlparse, parse_qs, urlencode, quote_plus
 from bs4 import BeautifulSoup
+import requests
+import re
 
 headers = {
     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3',
@@ -16,7 +16,7 @@ headers = {
     
 }
 
-session = HTMLSession()
+session = requests.session()
 
 response = session.get("https://romsdal-vgs.inschool.visma.no/?idp=feide", allow_redirects=True)
 parsed_url = urllib.parse.urlparse(response.url)
@@ -73,52 +73,45 @@ return_url = query_params.get('ReturnUrl', [''])[0]
 params["ReturnUrl"] = encoded_return_url = quote_plus(return_url)
 
 
-session.cookies.clear()
+
 
 req3 = session.post("https://connect.visma.com/external/login", 
                     headers=headers,
-                    allow_redirects=True,
+                    allow_redirects=False,
                     data=params)
 
-req4 = session.get(req3.url, allow_redirects=True)
 
-headers={"Cookie": f"SimpleSAMLSessionID={session.cookies.get_dict().get('SimpleSAMLSessionID')}"}
-
-req = session.post(req4.url, headers=headers,
-                   data={
-                       "feidename": os.getenv("VismaUser"),
-                       "password": os.getenv("VismaPassword")
-                       
-                   }, allow_redirects=True)
-#print(req.text)
-headers={"Cookie": f"SimpleSAMLSessionID={session.cookies.get_dict().get('SimpleSAMLSessionID')}"}
-
-
-soup = BeautifulSoup(req.text, 'html.parser')
-
-# Find the input field with the name 'SAMLResponse'
-token_input = soup.find('input', {'name': 'SAMLResponse'}).get('value')
-relay_state = soup.find('input', {'name': 'RelayState'}).get('value')
-form = soup.find('form').get("action")
+print(req3.headers)
+#req4 = session.get(req3.url, allow_redirects=False)
 
 
 
-headers={"Cookie": f"SimpleSAMLSessionID={session.cookies.get_dict().get('SimpleSAMLSessionID')}"}
 
-data={
-    "SAMLResponse": token_input,
-    "RelayState": quote_plus(relay_state)
+
+
+
+
+# Function to find keys based on the pattern
+#print(f"{find_key(session.cookies.get_dict(), pattern=pattern)}={session.cookies.get_dict().get(find_key(session.cookies.get_dict(), pattern=pattern))};")
+#print()
+
+#print(".AspNetCore.Antiforgery.D5MU2Fjo4Ro="+session.cookies.get(".AspNetCore.Antiforgery.D5MU2Fjo4Ro")+";")
+#print(session.cookies.get_dict())
+"""data = {
+    req4.url.split("&")[-3].split("=")[0]: req4.url.split("&")[-3].split("=")[1],
+    "code": req4.url.split("&")[4].split("=")[1]
 }
+cookie = ""
+for key, value in session.cookies.get_dict().items():
+    cookie += f"{key}={value};"""
+#print(session.cookies.get_dict())
 
-req = session.post(form, data=data, headers=headers, allow_redirects=False)
+"""req = session.post("https://connect.visma.com/signin-feide", 
+                   headers={"Cookie": cookie, "Referer": "https://auth.dataporten.no/"},
+                   data=data,
+                   allow_redirects=False)
 
 print(req.status_code)
-print(req.headers.get("Set-Cookie"))
-print()
-print(req.headers.get("Location"))
-
-"""#headers={"Cookie": f"SimpleSAMLSessionID={session.cookies.get_dict().get('SimpleSAMLSessionID')};SimpleSAMLAuthToken={session.cookies.get_dict().get('SimpleSAMLAuthToken')}",}
-req = session.get(req.url, headers=headers, allow_redirects=False)
-print(req.status_code)
-print(req.text)
-print(req.url)"""
+print(req.headers)
+print(req.url)
+print(req.text)"""
