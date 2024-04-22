@@ -73,17 +73,52 @@ return_url = query_params.get('ReturnUrl', [''])[0]
 params["ReturnUrl"] = encoded_return_url = quote_plus(return_url)
 
 
+session.cookies.clear()
 
-req2 = session.post("https://connect.visma.com/external/activate", 
-                    headers=headers,
-                    allow_redirects=True,
-                    params=params)
 req3 = session.post("https://connect.visma.com/external/login", 
                     headers=headers,
                     allow_redirects=True,
                     data=params)
 
-req = session.get(req3.url, allow_redirects=True)
+req4 = session.get(req3.url, allow_redirects=True)
+
+headers={"Cookie": f"SimpleSAMLSessionID={session.cookies.get_dict().get('SimpleSAMLSessionID')}"}
+
+req = session.post(req4.url, headers=headers,
+                   data={
+                       "feidename": os.getenv("VismaUser"),
+                       "password": os.getenv("VismaPassword")
+                       
+                   }, allow_redirects=True)
+#print(req.text)
+headers={"Cookie": f"SimpleSAMLSessionID={session.cookies.get_dict().get('SimpleSAMLSessionID')}"}
+
+
+soup = BeautifulSoup(req.text, 'html.parser')
+
+# Find the input field with the name 'SAMLResponse'
+token_input = soup.find('input', {'name': 'SAMLResponse'}).get('value')
+relay_state = soup.find('input', {'name': 'RelayState'}).get('value')
+form = soup.find('form').get("action")
+
+
+
+headers={"Cookie": f"SimpleSAMLSessionID={session.cookies.get_dict().get('SimpleSAMLSessionID')}"}
+
+data={
+    "SAMLResponse": token_input,
+    "RelayState": quote_plus(relay_state)
+}
+
+req = session.post(form, data=data, headers=headers, allow_redirects=False)
 
 print(req.status_code)
-print(req.url)
+print(req.headers.get("Set-Cookie"))
+print()
+print(req.headers.get("Location"))
+
+"""#headers={"Cookie": f"SimpleSAMLSessionID={session.cookies.get_dict().get('SimpleSAMLSessionID')};SimpleSAMLAuthToken={session.cookies.get_dict().get('SimpleSAMLAuthToken')}",}
+req = session.get(req.url, headers=headers, allow_redirects=False)
+print(req.status_code)
+print(req.text)
+print(req.url)"""
