@@ -56,7 +56,7 @@ class visma:
         self.Username = ""
         self.Password = ""
         self.base_url = url if url.endswith('/') else url+"/"
-        self.url = self.base_url + "?idp=feide" if url.endswith('/') else self.base_url + "/?idp=feide"
+        self.url = self.base_url + "?idp=feide" 
 
 
         self._chrome_driver_path = ChromeDriverManager().install()
@@ -127,16 +127,17 @@ class visma:
             # * Combine date and time and convert datetime
             date_str = day.get("date")
             debug_date = date_str.split('/')
-            current_time = datetime.now() if not self.debug else datetime(2024, int(debug_date[1]), int(debug_date[0]), 12, 0)
+            current_time = datetime.now() if not self.debug else datetime(2024, int(debug_date[1]), int(debug_date[0]), 12, 15)
+            print(current_time,)
             day_str, month_str, year_str = date_str.split('/')
             item_date = datetime(int(year_str), int(month_str), int(day_str)).date()
-
             match filter_type.lower():
                 case "next":
-                    return {"startTime": day.get("startTime"),
-                            "subject": day.get("subject"),
-                            "teacher": day.get("teacherName"),
-                            "endTime": day.get("endTime")} if lesson_time.time() > current_time.time() and item_date == current_time.date() else self.items
+                    if lesson_time.time() > current_time.time() and item_date == current_time.date():
+                        return{"startTime": day.get("startTime"),
+                                "subject": day.get("subject"),
+                                "teacher": day.get("teacherName"),
+                                "endTime": day.get("endTime")}
 
                 case "today":
                     if item_date == current_time.date():
@@ -250,7 +251,7 @@ class visma:
 
 if __name__ == "__main__":  # test code
 
-    visma = visma("https://romsdal-vgs.inschool.visma.no")
+    visma = visma("https://romsdal-vgs.inschool.visma.no", debug=True)
     visma.Username = os.getenv("VismaUser")
     visma.Password = os.getenv("VismaPassword")
-    print(visma.getWeek())
+    print(visma.getNextLesson())
