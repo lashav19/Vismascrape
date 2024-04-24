@@ -1,7 +1,7 @@
 *.venv
-*.env
+*env
 *test.py
-*test
+*test*
 *dist
 *build
 *creds.json
