@@ -108,7 +108,7 @@ class visma:
             "state": state,
             "session_state": session_state
         }
-
+        session.cookies.clear()
         req = session.post("https://app.inschool.visma.no/oauth2/code", data=data, allow_redirects=False)
         req = session.get(req.headers.get("Location"), allow_redirects=False)
         parsed_url = urlparse(req.url)
