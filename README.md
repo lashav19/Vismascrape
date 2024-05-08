@@ -93,6 +93,7 @@ data = request.get(url, headers=api.get_auth())
 ```
 
 ## Logging
+Custom logging module i made just for debugging, cuz if i use the default logging method i get no info from what i was trying to do.
 
 Incase you want to log with the format of this, this is the function
 
@@ -114,3 +115,9 @@ class logging:
                 f'Vismalib - - [{self.now}]: {Fore.RED + arg + Fore.RESET}')
 ```
 If you have any questions feel free to send me a message on discord `@b4z1c`
+
+
+## TODO:
+[ x ] Add support for "custom" url's (need to test still)
+
+[  ] Integrate new get_auth method into the module 
