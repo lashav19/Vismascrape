@@ -121,9 +121,9 @@ class visma:
         pattern = r'window\.(\w+)\s*=\s*(.*?);'
         match = re.search(pattern, "window.index_typeId = 9390648;")
 
-        if match:
-            learnerID = match.group(2)  # Extract the variable value
-            print(f"Variable Value: {learnerID}")
+        learnerID = match.group(2) if match else None
+
+        print(f"CurrentLearnerID: {learnerID}")
 
 
 if __name__ == "__main__":
