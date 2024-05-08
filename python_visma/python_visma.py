@@ -1,21 +1,15 @@
-from selenium.webdriver.support import expected_conditions as EC
-from selenium.webdriver.remote.webelement import WebElement
-from webdriver_manager.chrome import ChromeDriverManager
-from selenium.webdriver.support.ui import WebDriverWait
-from selenium.webdriver.chrome.service import Service
-from selenium.webdriver.chrome.options import Options
-from selenium.webdriver.common.keys import Keys
-from selenium.webdriver.common.by import By
-from selenium import webdriver
+from urllib.parse import urlparse, parse_qs, quote_plus, urljoin
+from bs4 import BeautifulSoup
 from datetime import datetime
 from colorama import Fore
+import warnings
 import requests
-import selenium
-import logging as lg
+import urllib
 import timeit
 import json
 import time
 import os
+import re
 
 # *!?TODO = Bettercomments VSCode extension
 
@@ -52,30 +46,18 @@ class visma:
         ? @param hide: hides the browser window
 
         """
-        #TODO: implement custom URL
         self.Username = ""
         self.Password = ""
         self.base_url = url if url.endswith('/') else url+"/"
-        self.url = self.base_url + "?idp=feide" 
+        self.url = self.base_url + "Login.jsp/?idp=feide" 
 
 
-        self._chrome_driver_path = ChromeDriverManager().install()
-        self.service = Service(self._chrome_driver_path)
-        self.options = Options()
-
-        self.wait = None
         self.auth = None
         self.learnerid = None
 
         self.debug = debug
         self.logger = logging(debug=self.debug)
         self.headless = hide
-
-        if self.headless:
-            args = ["--disable-logging", "--headless",
-                    "start-maximized", "--log-level=3"]
-            for arg in args:
-                self.options.add_argument(arg)
 
         self.__readAuth()
 
@@ -100,23 +82,6 @@ class visma:
             }
             json.dump(data, outfile)
 
-    def __waitelement(self, byType: By, item: str) -> WebElement:
-        # * Waits for an HTML element to avoid crashing
-        self.wait = WebDriverWait(self.driver, timeout=10)
-        self.wait.until(EC.visibility_of_element_located((byType, item)))
-
-        waited_for = self.driver.find_element(byType, item)
-        self.logger.log(f"Waited for {item}")
-
-        return waited_for
-
-    def __getLearnerID(self, driver):  # "Private" method
-        try:
-            # * Gets the current learnerID
-            return driver.execute_script("return currentLearnerId")
-        except:
-            return False
-
     def __filter(self, res, *, filter_type: str = "None") -> dict | list[dict]:
         self.items = []
         self.logger.log(self.items)
@@ -128,7 +93,6 @@ class visma:
             date_str = day.get("date")
             debug_date = date_str.split('/')
             current_time = datetime.now() if not self.debug else datetime(2024, int(debug_date[1]), int(debug_date[0]), 12, 15)
-            print(current_time,)
             day_str, month_str, year_str = date_str.split('/')
             item_date = datetime(int(year_str), int(month_str), int(day_str)).date()
             match filter_type.lower():
@@ -169,40 +133,110 @@ class visma:
 
     # Public
 
-    def get_auth(self) -> str:
-        """
-        #* A method for getting the cookies necessary for use of the in built API
-        ? return[0]: is the header for request
-        ? return[1]: is the value of learnerID to use towards the api
-        """
-        try:
-            self.logger.log("Started")
+    def get_auth(self):
+        def parse_url(url: str): return url.replace('%252F', '%2F').replace('%253F', '%3F').replace('%253D', '%3D').replace('%2526', '%26').replace('%253A', '%3A').replace('%257C', '%7C').replace('%253A', '%3A')
+        session = requests.session()
+        response = session.get(self.url, allow_redirects=True)
+        parsed_url = urllib.parse.urlparse(response.url)
+        soup = BeautifulSoup(response.text, 'html.parser')
+        token_input = soup.find('input', {'name': '__RequestVerificationToken'}) #* Find the input field with the name '__RequestVerificationToken'
+        request_verification_token = token_input.get("value") #* Get value of requestVerification token
+        decoded_url = response.url.replace('%2520', '%20')
+        query_params = parse_qs(decoded_url.split('?')[1])
+        return_url = query_params.get('ReturnUrl', [''])[0] 
 
-            self.driver = webdriver.Chrome(
-                service=self.service, options=self.options)
-            
-            self.driver.get(self.url)
-            self.logger.log("Getting URL")
+        req = session.post("https://connect.visma.com/external/login", 
+                            headers={"Cookie": f'.AspNetCore.Antiforgery.D5MU2Fjo4Ro={session.cookies.get(".AspNetCore.Antiforgery.D5MU2Fjo4Ro")};XSRF-TOKEN={session.cookies.get("XSRF-TOKEN")};.AspNetCore.Culture=c%3Den-US%7Cuic%3Den-US'},
+                            allow_redirects=False,
+                            data={
+                            "AuthenticationScheme": "FeideOIDC",
+                            "ProviderName": "Feide",
+                            "Action": "Login",
+                            "ClientId": "visma-inschool-web-prod",
+                            "RememberUsername": "False",
+                            "Username": "",
+                            "ShouldTriggerSelectAccount": "False",
+                            "__RequestVerificationToken": request_verification_token,
+                            "ReturnUrl": quote_plus(return_url)
+                            })
+        req = session.get(req.headers.get("Location"), allow_redirects=False)
+        req = session.get(req.headers.get("Location"), allow_redirects=False)
+        req = session.get(req.headers.get("Location"), allow_redirects=False)
+        req = session.get(req.headers.get("Location"), allow_redirects=False)
+        req = session.get(req.headers.get("Location"), allow_redirects=False)
+        data = {
+            "feidename": os.getenv("VismaUser"),
+            "password": os.getenv("VismaPassword")
+        }
+        req = session.post(req.headers.get("Location"), allow_redirects=True, data=data)
+        soup = BeautifulSoup(req.text, 'html.parser')
+        SAMLResponse = soup.find('input', {'name': 'SAMLResponse'}).get("value")
+        req = session.post("https://auth.dataporten.no/simplesaml/module.php/saml/sp/saml2-acs.php/feide", 
+                        data={"SAMLResponse": SAMLResponse})
 
-            username = self.__waitelement(By.ID, "username")
-            username.send_keys(self.Username)
+        soup = BeautifulSoup(req.text, 'html.parser')
+        code = soup.find('input', {'name': 'code'}).get("value")
+        state = soup.find('input', {'name': 'state'}).get("value")
 
-            password = self.__waitelement(By.ID, "password")
-            password.send_keys(self.Password)
+        Cookie = ";".join(sorted([f"{key}={value}" for key, value in session.cookies.get_dict().items()]))
+        Cookie = ";".join([part.strip() for part in Cookie.split(";")])
+        postCookie = Cookie.split(";")[2]+";"+Cookie.split(";")[1]+";"+Cookie.split(";")[0]+";"+Cookie.split(";")[6]
 
-            self.logger.log("Logging in")
 
-            self.driver.find_element(By.CLASS_NAME, "button-primary").click()
-            self.auth = {
-                "Cookie": f'Authorization={self.driver.get_cookie("Authorization").get("value")};XSRF-TOKEN={self.driver.get_cookie("XSRF-TOKEN").get("value")}'
-            }
-            self.learnerid = self.wait.until(self.__getLearnerID)
+        req = session.post(urljoin("https://connect.visma.com", "/signin-feide"), 
+                        headers={"Cookie": postCookie,
+                                    "Origin": "https://auth.dataporten.no",
+                                    "Referer": "https://auth.dataporten.no",
+                                    "Sec-Fetch-Site": "cross-site",
+                                    },
+                        data={"code": code,
+                                "state": state}, allow_redirects=False)
 
-            self.__writeAuth()
+        data = {
+            ".AspNetCore.Antiforgery.D5MU2Fjo4Ro" : session.cookies.get_dict().get(".AspNetCore.Antiforgery.D5MU2Fjo4Ro"),
+            "idsrv.external": session.cookies.get_dict().get("idsrv.external"),
+            "idsrv.externalC1": session.cookies.get_dict().get("idsrv.externalC1"),
+            "idsrv.externalC2": session.cookies.get_dict().get("idsrv.externalC2"),
+            ".AspNetCore.Culture":"c%3Den-US%7Cuic%3Den-US"
+        }
+        Cookie = "; ".join([f"{key}={value}" for key, value in data.items()])
 
-            return self.auth, self.learnerid
-        except  selenium.common.exceptions.InvalidArgumentException:
-            raise ValueError("No url specified")
+        req = session.get(urljoin("https://connect.visma.com", parse_url(req.headers.get("Location"))),
+                        headers={"Cookie": Cookie}, 
+                        allow_redirects=False)
+
+        req = session.get(urljoin("https://connect.visma.com", parse_url(req.headers.get("Location"))),headers={"Cookie": req.headers.get("Set-Cookie")}, )
+
+        soup = BeautifulSoup(req.text, 'html.parser')
+        code = soup.find('input', {'name': 'code'}).get("value")
+        id_token = soup.find('input', {'name': 'id_token'}).get("value")
+        scope = soup.find('input', {'name': 'scope'}).get("value")
+        state = soup.find('input', {'name': 'state'}).get("value")
+        session_state = soup.find('input', {'name': 'session_state'}).get("value")
+
+        data ={
+            "code": code,
+            "id_token": id_token,
+            "scope": scope,
+            "state": state,
+            "session_state": session_state
+        }
+        session.cookies.clear()
+        req = session.post("https://app.inschool.visma.no/oauth2/code", data=data, allow_redirects=False)
+        req = session.get(req.headers.get("Location"), allow_redirects=False)
+        parsed_url = urlparse(req.url)
+        root_url = f"{parsed_url.scheme}://{parsed_url.netloc}/"
+        req = session.get(root_url, allow_redirects=True, data={Cookie: req.headers.get("Set-Cookie")})
+
+        pattern = r'window\.(\w+)\s*=\s*(.*?);'
+        match = re.search(pattern, "window.index_typeId = 9390648;")
+
+        self.learnerid = match.group(2) if match else None
+
+        self.auth = {"Cookie": f"Authorization={session.cookies.get_dict().get("Authorization")};XSRF-TOKEN={session.cookies.get_dict().get("XSRF-TOKEN")}"}
+        self.__writeAuth()
+        return self.auth, self.learnerid
+        
         
     def fetchJsonData(self, *, tries: int = 0) -> dict:
         """
