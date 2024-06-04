@@ -1,7 +1,7 @@
 # python-visma
 
 ## Installation
-
+You can only use this on Romsdal Vgs's inschool, but i am working on implementing URL logic that will allow any school that uses InSchool to use this
 
 I might add it to PyPi but as long as this is in beta it won't be
 
