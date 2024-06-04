@@ -13,7 +13,7 @@ import requests
 import selenium
 import json
 import time
-import os
+import os, re
 
 
 class logging:
@@ -197,7 +197,10 @@ class visma:
         self.auth = {
             "Cookie": f'Authorization={self.driver.get_cookie("Authorization").get("value")};XSRF-TOKEN={self.driver.get_cookie("XSRF-TOKEN").get("value")}'
         }
-        self.learnerid = self.wait.until(self.__getLearnerID)
+        match = re.search(r'window\.(\w+)\s*=\s*(.*?);', "window.index_typeId = 9390648;")
+        self.learnerid = match.group(2) if match else "Not found"
+        print("LEARNERID: ",self.learnerid)
+        #self.learnerid = self.wait.until(self.__getLearnerID)
 
         self.__writeAuth()
 
@@ -215,6 +218,7 @@ class visma:
             self.get_auth()
 
         try:
+            print(self.auth)
             self.url = f'https://romsdal-vgs.inschool.visma.no/control/timetablev2/learner/{self.learnerid}/fetch/ALL/0/current?forWeek={datetime.now().date().strftime("%d/%m/20%y")}&extra-info=true&types=LESSON,SUBSTITUTION'
             self.req = requests.get(self.url, headers=self.auth)
             self.logger.log(self.req.status_code)
@@ -249,8 +253,10 @@ class visma:
 
 
 if __name__ == "__main__":  # test code
-
+    startTime = time.time()
     visma = visma()
     visma.Username = os.getenv("VismaUser")
     visma.Password = os.getenv("VismaPassword")
-    print("Neste time: ", visma.fetchJsonData())
+    print("JSONDATA: ", visma.get_auth())
+    endTime = time.time()
+    print(f"Elapsed time {endTime-startTime}s", )
