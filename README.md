@@ -1,4 +1,5 @@
 # python-visma
+This is a test version that uses request logic instead of simulating a webbrowser
 
 ## Installation
 
