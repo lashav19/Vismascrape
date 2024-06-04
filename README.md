@@ -98,6 +98,8 @@ data = request.get(url, headers=api.get_auth())
 
 ## Logging
 
+Made my own "logger" because i couldn't bother using the logging library
+
 Incase you want to log with the format of this, this is the function
 
 ```py
