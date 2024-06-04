@@ -102,13 +102,6 @@ class visma:
 
         return waited_for
 
-    def __getLearnerID(self, driver):  # "Private" method
-        try:
-            # * Gets the current learnerID
-            return driver.execute_script("return currentLearnerId")
-        except:
-            return False
-
     def __filter(self, res, *, filter_type: str = "None") -> dict | list[dict]:
         self.items = []
         self.logger.log(self.items)
@@ -171,19 +164,10 @@ class visma:
         ? return[1]: is the value of learnerID to use towards the api
         """
         self.logger.log("Started")
+        self.driver = webdriver.Chrome(service=self.service, options=self.options)
+        self.driver.get("https://romsdal-vgs.inschool.visma.no/Login.jsp/?idp=feide")
 
-        self.driver = webdriver.Chrome(
-            service=self.service, options=self.options)
-
-        self.driver.get("https://romsdal-vgs.inschool.visma.no/")
         self.logger.log("Getting URL")
-
-        button = self.__waitelement(By.ID, "onetrust-accept-btn-handler")
-        if button:
-            button.click()
-
-        login = self.__waitelement(By.ID, "login-with-feide-button")
-        login.click()
 
         username = self.__waitelement(By.ID, "username")
         username.send_keys(self.Username)
@@ -199,8 +183,7 @@ class visma:
         }
         match = re.search(r'window\.(\w+)\s*=\s*(.*?);', "window.index_typeId = 9390648;")
         self.learnerid = match.group(2) if match else "Not found"
-        print("LEARNERID: ",self.learnerid)
-        #self.learnerid = self.wait.until(self.__getLearnerID)
+        self.logger.log("LEARNERID: ",self.learnerid)
 
         self.__writeAuth()
 
@@ -218,7 +201,7 @@ class visma:
             self.get_auth()
 
         try:
-            print(self.auth)
+            self.logger.log(self.auth)
             self.url = f'https://romsdal-vgs.inschool.visma.no/control/timetablev2/learner/{self.learnerid}/fetch/ALL/0/current?forWeek={datetime.now().date().strftime("%d/%m/20%y")}&extra-info=true&types=LESSON,SUBSTITUTION'
             self.req = requests.get(self.url, headers=self.auth)
             self.logger.log(self.req.status_code)
@@ -257,6 +240,6 @@ if __name__ == "__main__":  # test code
     visma = visma()
     visma.Username = os.getenv("VismaUser")
     visma.Password = os.getenv("VismaPassword")
-    print("JSONDATA: ", visma.get_auth())
+    print("JSONDATA: ", visma.getToday())
     endTime = time.time()
     print(f"Elapsed time {endTime-startTime}s", )
