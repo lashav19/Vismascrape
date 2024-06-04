@@ -7,7 +7,7 @@ I might add it to PyPi but as long as this is in beta it won't be
 
 ### Install from repo
 ```
-pip install https://github.com/lashav19/python-visma.git
+pip install git+https://github.com/lashav19/python-visma.git
 ```
 
 ### Manually install
