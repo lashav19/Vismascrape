@@ -29,8 +29,7 @@ class logging:
     def error(self, *args) -> None:
         self.now = datetime.now().strftime(self.format)
         for arg in args:
-            print(
-                f'Vismalib - - [{self.now}]: {Fore.RED + arg + Fore.RESET}')
+            print(f'Vismalib - - [{self.now}]: {Fore.RED + arg + Fore.RESET}')
 
 
 class visma:
@@ -42,7 +41,7 @@ class visma:
      ! Please for the love of god DO NOT PUT YOUR PASSWORDS IN PLAINTEXT USE ENVIRONMENT VARIABLES
     """
 
-    def __init__(self,url, *, debug=False, hide=True) -> None:
+    def __init__(self,url, *, debug=False, hide_window=True) -> None:
         """
         ? param debug:  View logs for everything that is happening
         ? param hide: hides the browser window
@@ -50,10 +49,6 @@ class visma:
         """
         self.Username = ""
         self.Password = ""
-
-        self._chrome_driver_path = ChromeDriverManager().install()
-        self.service = Service(self._chrome_driver_path)
-        self.options = Options()
 
         self.wait = None
         self.auth = None
@@ -64,13 +59,9 @@ class visma:
 
         self.debug = debug
         self.logger = logging(debug=self.debug)
-        self.headless = hide
+        self.headless = hide_window
 
-        if self.headless:
-            args = ["--disable-logging", "--headless",
-                    "start-maximized", "--log-level=3"]
-            for arg in args:
-                self.options.add_argument(arg)
+
 
         self.__readAuth()
 
@@ -97,7 +88,7 @@ class visma:
 
     def __waitelement(self, byType: By, item: str) -> WebElement:
         # * Waits for an HTML element to avoid crashing
-        self.wait = WebDriverWait(self.driver, timeout=10)
+        self.wait = WebDriverWait(self.driver, timeout=5)
         self.wait.until(EC.visibility_of_element_located((byType, item)))
 
         waited_for = self.driver.find_element(byType, item)
@@ -160,12 +151,23 @@ class visma:
 
     # Public
 
-    def get_auth(self) -> str:
+    def get_auth(self) -> tuple[dict, str]:
         """
         #* A method for getting the cookies necessary for use of the in built API
         ? return[0]: is the header for request
         ? return[1]: is the value of learnerID to use towards the api
         """
+
+        self._chrome_driver_path = ChromeDriverManager().install()
+        self.service = Service(self._chrome_driver_path)
+        self.options = Options()
+
+        if self.headless:
+            args = ["--disable-logging", "--headless",
+                    "start-maximized", "--log-level=3"]
+            for arg in args:
+                self.options.add_argument(arg)
+
         self.logger.log("Started")
         self.driver = webdriver.Chrome(service=self.service, options=self.options)
         self.logger.log(self.url)
@@ -207,9 +209,12 @@ class visma:
         try:
             self.logger.log(self.auth)
             self.logger.log(self.base_url)
+            
             self.url = f'{self.base_url}control/timetablev2/learner/{self.learnerid}/fetch/ALL/0/current?forWeek={datetime.now().date().strftime("%d/%m/20%y")}&extra-info=true&types=LESSON,SUBSTITUTION'
+            
             self.req = requests.get(self.url, headers=self.auth)
             self.logger.log(self.req.status_code)
+            
             if self.req.status_code > 400:
                 self.__retry(tries)
 
@@ -218,7 +223,7 @@ class visma:
         except requests.exceptions.JSONDecodeError:
             self.__retry(tries)
 
-    def getNextLesson(self) -> dict:
+    def getNextLesson(self) -> list[dict]:
         data = self.__filter(self.fetchJsonData(), filter_type="next")
         return data if data else {
             "startTime": None,
@@ -227,7 +232,7 @@ class visma:
             "endTime": None
         }
 
-    def getToday(self) -> dict:
+    def getToday(self) -> list[dict]:
         data = self.__filter(self.fetchJsonData(), filter_type="today")
         return data if data else {
             "startTime": None,
@@ -236,15 +241,15 @@ class visma:
             "endTime": None
         }
 
-    def getWeek(self):
+    def getWeek(self) -> list[dict]:
         return self.__filter(self.fetchJsonData())
 
 
 if __name__ == "__main__":  # test code
-    startTime = time.time()
+    startTime = time.perf_counter()
     visma = visma("https://romsdal-vgs.inschool.visma.no/",)
     visma.Username = os.getenv("VismaUser")
     visma.Password = os.getenv("VismaPassword")
-    print("JSONDATA: ", visma.fetchJsonData())
-    endTime = time.time()
+    print("JSONDATA: ", visma.getToday())
+    endTime = time.perf_counter()
     print(f"Elapsed time {endTime-startTime}s", )
