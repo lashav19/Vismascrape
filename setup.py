@@ -6,7 +6,7 @@ with open('requirements.txt') as f:
 
 setup(
     name='python-visma',
-    version='1.0.3',
+    version='1.0.4',
     description='Python API to interact with visma as well as getting credentials to use against the Visma REST API',
     packages=find_packages(),
     install_requires=requirements,
