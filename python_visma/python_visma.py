@@ -42,7 +42,7 @@ class visma:
      ! Please for the love of god DO NOT PUT YOUR PASSWORDS IN PLAINTEXT USE ENVIRONMENT VARIABLES
     """
 
-    def __init__(self, *, debug=False, hide=True) -> None:
+    def __init__(self,url, *, debug=False, hide=True) -> None:
         """
         ? param debug:  View logs for everything that is happening
         ? param hide: hides the browser window
@@ -58,6 +58,9 @@ class visma:
         self.wait = None
         self.auth = None
         self.learnerid = None
+
+        self.base_url = url if url.endswith('/') else url+"/"
+        self.url = self.base_url + "Login.jsp/?idp=feide" 
 
         self.debug = debug
         self.logger = logging(debug=self.debug)
@@ -165,7 +168,8 @@ class visma:
         """
         self.logger.log("Started")
         self.driver = webdriver.Chrome(service=self.service, options=self.options)
-        self.driver.get("https://romsdal-vgs.inschool.visma.no/Login.jsp/?idp=feide")
+        self.logger.log(self.url)
+        self.driver.get(self.url)
 
         self.logger.log("Getting URL")
 
@@ -202,7 +206,8 @@ class visma:
 
         try:
             self.logger.log(self.auth)
-            self.url = f'https://romsdal-vgs.inschool.visma.no/control/timetablev2/learner/{self.learnerid}/fetch/ALL/0/current?forWeek={datetime.now().date().strftime("%d/%m/20%y")}&extra-info=true&types=LESSON,SUBSTITUTION'
+            self.logger.log(self.base_url)
+            self.url = f'{self.base_url}control/timetablev2/learner/{self.learnerid}/fetch/ALL/0/current?forWeek={datetime.now().date().strftime("%d/%m/20%y")}&extra-info=true&types=LESSON,SUBSTITUTION'
             self.req = requests.get(self.url, headers=self.auth)
             self.logger.log(self.req.status_code)
             if self.req.status_code > 400:
@@ -237,9 +242,9 @@ class visma:
 
 if __name__ == "__main__":  # test code
     startTime = time.time()
-    visma = visma()
+    visma = visma("https://romsdal-vgs.inschool.visma.no/",)
     visma.Username = os.getenv("VismaUser")
     visma.Password = os.getenv("VismaPassword")
-    print("JSONDATA: ", visma.getToday())
+    print("JSONDATA: ", visma.fetchJsonData())
     endTime = time.time()
     print(f"Elapsed time {endTime-startTime}s", )

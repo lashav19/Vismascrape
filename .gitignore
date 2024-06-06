@@ -1,6 +1,7 @@
 *.venv
 *.env
 *test.py
+*.*env
 *test
 *dist
 *build
