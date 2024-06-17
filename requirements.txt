@@ -32,7 +32,7 @@ setuptools==69.5.1
 six==1.16.0
 trio==0.22.2
 typing_extensions==4.8.0
-urllib3==2.0.7
+urllib3==2.2.2
 webdriver-manager==4.0.1
 websocket-client==1.6.3
 websockets==11.0.3
