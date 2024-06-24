@@ -55,7 +55,7 @@ class visma:
         self.learnerid = None
 
         self.base_url = url if url.endswith('/') else url+"/"
-        self.url = self.base_url + "Login.jsp/?idp=feide" 
+        self.login_url = self.base_url + "Login.jsp/?idp=feide" 
 
         self.debug = debug
         self.logger = logging(debug=self.debug)
@@ -88,7 +88,7 @@ class visma:
 
     def __waitelement(self, byType: By, item: str) -> WebElement:
         # * Waits for an HTML element to avoid crashing
-        self.wait = WebDriverWait(self.driver, timeout=5)
+        self.wait = WebDriverWait(self.driver, timeout=10)
         self.wait.until(EC.visibility_of_element_located((byType, item)))
 
         waited_for = self.driver.find_element(byType, item)
@@ -108,7 +108,6 @@ class visma:
             debug_date = date_str.split('/')
             current_time = datetime.now() if not self.debug else datetime(
                 2024, int(debug_date[1]), int(debug_date[0]), 12, 0)
-
             day_str, month_str, year_str = date_str.split('/')
 
             item_date = datetime(int(year_str), int(
@@ -170,10 +169,10 @@ class visma:
 
         self.logger.log("Started")
         self.driver = webdriver.Chrome(service=self.service, options=self.options)
-        self.logger.log(self.url)
-        self.driver.get(self.url)
+        self.logger.log("Getting URL", )
+        self.logger.log(self.login_url)
+        self.driver.get(self.login_url)
 
-        self.logger.log("Getting URL")
 
         username = self.__waitelement(By.ID, "username")
         username.send_keys(self.Username)
@@ -210,7 +209,7 @@ class visma:
             self.logger.log(self.auth)
             self.logger.log(self.base_url)
             
-            self.url = f'{self.base_url}control/timetablev2/learner/{self.learnerid}/fetch/ALL/0/current?forWeek={datetime.now().date().strftime("%d/%m/20%y")}&extra-info=true&types=LESSON,SUBSTITUTION'
+            self.url = f'{self.base_url}control/timetablev2/learner/{self.learnerid}/fetch/ALL/0/current?forWeek={datetime.date().strftime("%d/%m/20%y") if not self.debug else "20/05/2024"}&extra-info=true&types=LESSON,SUBSTITUTION'
             
             self.req = requests.get(self.url, headers=self.auth)
             self.logger.log(self.req.status_code)
@@ -247,9 +246,9 @@ class visma:
 
 if __name__ == "__main__":  # test code
     startTime = time.perf_counter()
-    visma = visma("https://romsdal-vgs.inschool.visma.no/",)
+    visma = visma("https://romsdal-vgs.inschool.visma.no/", debug=True)
     visma.Username = os.getenv("VismaUser")
     visma.Password = os.getenv("VismaPassword")
-    print("JSONDATA: ", visma.getToday())
+    print("JSONDATA: ", visma.getWeek())
     endTime = time.perf_counter()
     print(f"Elapsed time {endTime-startTime}s", )
