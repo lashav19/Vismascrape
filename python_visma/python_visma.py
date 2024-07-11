@@ -50,18 +50,13 @@ class visma:
         self.Username = ""
         self.Password = ""
 
-        self.wait = None
-        self.auth = None
-        self.learnerid = None
-
+        self.wait, self.auth, self.learnerid = None, None, None
         self.base_url = url if url.endswith('/') else url+"/"
         self.login_url = self.base_url + "Login.jsp/?idp=feide" 
 
         self.debug = debug
         self.logger = logging(debug=self.debug)
         self.headless = hide_window
-
-
 
         self.__readAuth()
 
@@ -77,15 +72,6 @@ class visma:
         except:
             return False
 
-    def __writeAuth(self):
-        # * writes the credentials to creds.json
-        with open("creds.json", "w") as outfile:
-            data = {
-                "auth": self.auth,
-                "learnerID": self.learnerid
-            }
-            json.dump(data, outfile)
-
     def __waitelement(self, byType: By, item: str) -> WebElement:
         # * Waits for an HTML element to avoid crashing
         self.wait = WebDriverWait(self.driver, timeout=10)
@@ -97,8 +83,9 @@ class visma:
         return waited_for
 
     def __filter(self, res, *, filter_type: str = "None") -> dict | list[dict]:
+        self.logger.log(self.auth)
         self.items = []
-        self.logger.log(self.items)
+        self.logger.log(res.get("timetableItems"))
 
         for day in res.get("timetableItems"):
             lesson_time = datetime.strptime(day.get("startTime"), "%H:%M")
@@ -106,19 +93,17 @@ class visma:
             # * Combine date and time and convert datetime
             date_str = day.get("date")
             debug_date = date_str.split('/')
-            current_time = datetime.now() if not self.debug else datetime(
-                2024, int(debug_date[1]), int(debug_date[0]), 12, 0)
+            current_time = datetime.now() if not self.debug else datetime(2024, int(debug_date[1]), int(debug_date[0]), 12, 0)
             day_str, month_str, year_str = date_str.split('/')
-
-            item_date = datetime(int(year_str), int(
-                month_str), int(day_str)).date()
+            item_date = datetime(int(year_str), int(month_str), int(day_str)).date()
 
             match filter_type.lower():
                 case "next":
+                    match = lesson_time.time() > current_time.time() and item_date == current_time.date()
                     return {"startTime": day.get("startTime"),
                             "subject": day.get("subject"),
                             "teacher": day.get("teacherName"),
-                            "endTime": day.get("endTime")} if lesson_time.time() > current_time.time() and item_date == current_time.date() else self.items
+                            "endTime": day.get("endTime")} if match else self.items
 
                 case "today":
                     if item_date == current_time.date():
@@ -131,18 +116,18 @@ class visma:
 
                 case _:
                     self.items.append({
-                        "startTime": day.get("startTime"),
-                        "subject": day.get("subject"),
-                        "teacher": day.get("teacherName"),
-                        "endTime": day.get("endTime")
+                            "startTime": day.get("startTime"),
+                            "subject": day.get("subject"),
+                            "teacher": day.get("teacherName"),
+                            "endTime": day.get("endTime")
                     })
         return self.items
 
     def __retry(self, tries=0):
         # * If credentials are invalid it will attempt again
         tries += 1
-        if tries == 4:  # max 4 tries
-            raise ConnectionAbortedError("Error getting credentials")
+        if tries == 4: raise ConnectionAbortedError("Error getting credentials")
+
         self.logger.error(f"Invalid credentials trying again {tries}")
         self.learnerid = None
         self.auth = None
@@ -162,10 +147,7 @@ class visma:
         self.options = Options()
 
         if self.headless:
-            args = ["--disable-logging", "--headless",
-                    "start-maximized", "--log-level=3"]
-            for arg in args:
-                self.options.add_argument(arg)
+            for arg in ["--disable-logging", "--headless","start-maximized", "--log-level=3"]: self.options.add_argument(arg)
 
         self.logger.log("Started")
         self.driver = webdriver.Chrome(service=self.service, options=self.options)
@@ -190,7 +172,13 @@ class visma:
         self.learnerid = match.group(2) if match else "Not found"
         self.logger.log("LEARNERID: ",self.learnerid)
 
-        self.__writeAuth()
+        # * writes the credentials to creds.json
+        with open("creds.json", "w") as f:
+            data = {
+                "auth": self.auth,
+                "learnerID": self.learnerid
+            }
+            json.dump(data, f)
 
         return self.auth, self.learnerid
 
@@ -209,18 +197,15 @@ class visma:
             self.logger.log(self.auth)
             self.logger.log(self.base_url)
             
-            self.url = f'{self.base_url}control/timetablev2/learner/{self.learnerid}/fetch/ALL/0/current?forWeek={datetime.date().strftime("%d/%m/20%y") if not self.debug else "20/05/2024"}&extra-info=true&types=LESSON,SUBSTITUTION'
+            self.url = f'{self.base_url}control/timetablev2/learner/{self.learnerid}/fetch/ALL/0/current?forWeek={datetime.now().strftime("%d/%m/20%y") if self.debug else "20/05/2024"}&extra-info=true&types=LESSON,SUBSTITUTION'
             
             self.req = requests.get(self.url, headers=self.auth)
             self.logger.log(self.req.status_code)
             
-            if self.req.status_code > 400:
-                self.__retry(tries)
-
+            if self.req.status_code > 400: self.__retry(tries)
             return self.req.json()
 
-        except requests.exceptions.JSONDecodeError:
-            self.__retry(tries)
+        except requests.exceptions.JSONDecodeError: self.__retry(tries)
 
     def getNextLesson(self) -> list[dict]:
         data = self.__filter(self.fetchJsonData(), filter_type="next")
@@ -246,9 +231,9 @@ class visma:
 
 if __name__ == "__main__":  # test code
     startTime = time.perf_counter()
-    visma = visma("https://romsdal-vgs.inschool.visma.no/", debug=True)
+    visma = visma("https://romsdal-vgs.inschool.visma.no/", debug=False)
     visma.Username = os.getenv("VismaUser")
     visma.Password = os.getenv("VismaPassword")
-    print("JSONDATA: ", visma.getWeek())
+    print("JSONDATA: ", visma.fetchJsonData())
     endTime = time.perf_counter()
     print(f"Elapsed time {endTime-startTime}s", )
