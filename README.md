@@ -121,4 +121,4 @@ class logging:
 ```
 If you have any questions feel free to send me a message on discord `@b4z1c`
 
-mail: [lasse@havnes.info](lasse@havnes.info)
+mail: [mail@bazic.no](mail@bazic.no)
